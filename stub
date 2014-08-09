@@ -1,0 +1,93 @@
+#!/bin/bash
+
+usage(){
+cat <<EOF
+Usage: stub COMMAND [and_output OUTPUT] [and_error ERROR] [and_return RETURN_CODE]
+Stubbing for Bash unit tests
+
+Options:
+    COMMAND                 The command and arguments to stub. EG 'ip -o add show'
+    and_output OUTPUT       Return this as standard out
+    and_error  ERROR        Return this as standard error
+    and_return RETURN_CODE  The return code
+
+Examples:
+
+Stub the command 'ip route' to return 'default via foo' with an exit code of 0
+
+    stub 'ip route' and_output 'default via foo' and_return 0
+
+Calls to 'ip' will now be intercepted via the stub
+
+EOF
+
+}
+
+
+stub(){
+    local ARGS
+    local STUB_OUT
+    local STUB_ERR
+    local STUB_RETURN
+    STUB_OUT=""
+    STUB_ERR=""
+    STUB_RETURN=0
+    ARGS="`echo $1 | cut -d ' ' -f2-`"
+    BINARY="`echo $1 | cut -d ' ' -f1`"
+    # parse the stubbing options
+    shift
+    while [ $# -gt 0 ]; do
+        case "$1" in
+            and_output)
+                shift
+                STUB_OUT="$1"
+                shift
+            ;;
+            and_error)
+                shift
+                STUB_ERR="$1"
+                shift
+            ;;
+            and_return)
+                shift
+                STUB_RETURN=$1
+                shift
+            ;;
+            *)
+                usage
+                exit 1
+            ;;
+        esac
+    done
+
+    # Create the stub
+eval "$BINARY(){
+        local ARGUMENTS
+        ARGUMENTS=\"\$@\"
+        if [ \"\$ARGUMENTS\" = \"$ARGS\" ]; then
+            [ -n \"$STUB_OUT\" ] && echo \"$STUB_OUT\"
+            [ -n \"$STUB_ERR\" ] && >&2 echo \"$STUB_ERR\"
+            return $STUB_RETURN
+        fi
+        >&2 echo stub \'$BINARY\' received unexpected arguments \'\$ARGUMENTS\'
+        return 1
+}
+"
+}
+
+add_stub(){
+    local NAME
+    local ARGUMENTS
+    local STUB_OUT
+    local STUB_ERR
+    local STUB_EXIT
+
+    NAME="$1"
+    ARGUMENTS="$2"
+    STUB_OUT="$3"
+
+}
+
+stub "ip add list" and_output "derp" and_error "something" and_return 1
+
+ip add list
